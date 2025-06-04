@@ -1,0 +1,114 @@
+Catálogo de Dados = 
+
+// Cria variável que coleta as colunas visíveis do modelo (exceto a própria tabela "Catálogo de Dados")
+VAR colunas =
+    SELECTCOLUMNS (
+        FILTER (
+            INFO.VIEW.COLUMNS (),
+            [Table] <> "Catálogo de Dados" &&
+            NOT ( [IsHidden] ) // Ignora colunas ocultas
+        ),
+        // Define colunas que serão exibidas no resultado
+        "Categoria", "Coluna", // Define que esse item é uma coluna
+        "Nome do Objeto", [Name], // Nome da coluna
+        "Descrição", 
+            IF ( [IsKey], "Chave de relacionamento. ", "" ) & [Description], // Identifica chaves e concatena com a descrição
+        "Tipo de Objeto", "Coluna", // Tipo fixo
+        "Tipo de Dados", [DataType] & " - " & [DataCategory], // Tipo de dado e categoria (ex: Date - Time)
+        "Tabela de Origem", [Table], // Nome da tabela que contém a coluna
+        "Expressão DAX", [Expression], // Expressão DAX (para colunas calculadas)
+        "Oculto?", IF ( [IsHidden], "Sim", "Não" ), // Indica se está oculta no modelo
+        "É Chave?", IF ( [IsKey], "Sim", "Não" ), // Identifica se é chave primária
+        "Lineage Tag", [LineageTag] // Tag de linhagem, usada internamente pelo engine
+    )
+
+// Cria variável que coleta medidas visíveis no modelo
+VAR medidas =
+    SELECTCOLUMNS (
+        FILTER (
+            INFO.VIEW.MEASURES (),
+            [Table] <> "Catálogo de Dados" &&
+            NOT ( [IsHidden] ) // Ignora medidas ocultas
+        ),
+        "Categoria", "Medida", // Define que esse item é uma medida
+        "Nome do Objeto", [Name], // Nome da medida
+        "Descrição", [Description], // Descrição inserida no painel de propriedades
+        "Tipo de Objeto", "Medida", // Tipo fixo
+        "Tipo de Dados", [FormatStringDefinition], // Formato (ex: #,##0.00)
+        "Tabela de Origem", [Table], // Tabela onde a medida está armazenada
+        "Expressão DAX", [Expression], // Código DAX da medida
+        "Oculto?", IF ( [IsHidden], "Sim", "Não" ), // Medida está oculta?
+        "É Chave?", BLANK(), // Não se aplica a medidas
+        "Lineage Tag", [LineageTag] // Tag de linhagem
+    )
+
+// Cria variável que coleta informações das tabelas do modelo (exceto do próprio catálogo e do Calculations)
+VAR tabelas =
+    SELECTCOLUMNS (
+        FILTER (
+            INFO.VIEW.TABLES (),
+            [Name] <> "Catálogo de Dados" &&
+            [Name] <> "Calculations" &&
+            NOT ( [IsHidden] ) // Ignora tabelas ocultas
+        ),
+        "Categoria", "Tabela", // Define que esse item é uma tabela
+        "Nome do Objeto", [Name], // Nome da tabela
+        "Descrição", [Description], // Descrição atribuída à tabela
+        "Tipo de Objeto", 
+            SWITCH (
+                TRUE (),
+                NOT ( ISBLANK ( [Expression] ) ), "Tabela Calculada", // Identifica se é calculada
+                "Tabela de Dados"
+            ),
+        "Tipo de Dados", [StorageMode], // Modo de armazenamento (Import, DirectQuery, etc.)
+        "Tabela de Origem", [Name], // Nome da própria tabela
+        "Expressão DAX", [Expression], // Expressão DAX da tabela (se calculada)
+        "Oculto?", IF ( [IsHidden], "Sim", "Não" ), // Está oculta?
+        "É Chave?", BLANK(), // Não se aplica
+        "Lineage Tag", [LineageTag] // Tag de linhagem
+    )
+
+// Cria variável que coleta os relacionamentos do modelo
+VAR relacionamentos =
+    SELECTCOLUMNS (
+        INFO.VIEW.RELATIONSHIPS (),
+        "Categoria", "Relacionamento", // Define que esse item é um relacionamento
+        "Nome do Objeto", [Relationship], // Nome técnico do relacionamento
+        "Descrição", 
+            IF ( [IsActive], "Relacionamento Ativo", "Relacionamento Inativo" ), // Ativo ou inativo
+        "Tipo de Objeto", 
+              SWITCH (
+        [FromCardinality],
+        "One", "Um",
+        "Many", "Muitos",
+        [FromCardinality]
+    ) & " Para " & 
+    SWITCH (
+        [ToCardinality],
+        "One", "Um",
+        "Many", "Muitos",
+        [ToCardinality]
+    ) & " - " & 
+    SWITCH (
+        [CrossFilteringBehavior],
+        "OneDirection", "Única Direção",
+        "BothDirections", "Ambas as Direções",
+        [CrossFilteringBehavior]
+    ), // Cardinalidade e comportamento de filtro cruzado
+        "Tipo de Dados", BLANK(), // Não aplicável
+        "Tabela de Origem", 
+            "De: " & [FromTable] & " | Para: " & [ToTable], // Relacionamento entre duas tabelas
+        "Expressão DAX", BLANK(), // Não aplicável
+        "Oculto?", BLANK(), // Não aplicável
+        "É Chave?", BLANK(), // Não aplicável
+        "Lineage Tag", [Name] // Nome técnico do relacionamento
+    )
+
+// Retorna todos os elementos combinados em uma única tabela: colunas + medidas + tabelas + relacionamentos
+RETURN
+    UNION (
+        colunas,
+        medidas,
+        tabelas,
+        relacionamentos
+    )
