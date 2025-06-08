@@ -10,7 +10,7 @@ Facilitar a documentação de modelos Power BI, trazendo informações essenciai
 
 - `README.md` – Visão geral do projeto
 - `explicacao.md` – Detalhamento da lógica DAX utilizada
-- `modelo_exemplo.pbix` – (Opcional) Arquivo PBIX de exemplo
+- `modelo_exemplo.pbix` – Arquivo PBIX de exemplo
 - `/backgrounds/` – Arquivos visuais de fundo usados no projeto
 
 ## Como usar
